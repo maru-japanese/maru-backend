@@ -12,6 +12,8 @@ O schema está em `supabase/migrations/20260922200355_maru_progress.sql`. A tabe
 `public.maru_progress` usa RLS habilitada e não concede acesso direto a `anon`
 nem `authenticated`. Só a função com chave de serviço lê e mescla snapshots.
 Cada escrita compara a versão para evitar perder uma atualização concorrente.
+O aviso do linter sobre RLS sem política é esperado: criar uma política de
+acesso direto abriria uma via paralela à validação da função.
 
 Antes de aplicar migrações futuras, confira o histórico remoto e faça backup
 do banco no Supabase. Nunca exponha a chave de serviço no frontend, nos commits
@@ -27,9 +29,11 @@ npm run build:edge
 supabase functions deploy maru-api --project-ref qxtgaalmyzyldmcpwooo
 ```
 
-O `supabase/config.toml` aponta para o bundle gerado. A função usa as variáveis
-`SUPABASE_URL`, `SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` fornecidas pelo
-ambiente Supabase. A origem permitida padrão é
+O `supabase/config.toml` aponta para o bundle gerado. A função usa
+`SUPABASE_URL` e prefere as chaves `default` de `SUPABASE_PUBLISHABLE_KEYS` e
+`SUPABASE_SECRET_KEYS` fornecidas pelo Supabase. As chaves legadas
+`SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` só são fallback. A chave
+secreta fica exclusivamente no servidor. A origem permitida padrão é
 `https://maru-frontend.vercel.app`; `MARU_PUBLIC_ORIGIN` pode substituí-la por
 outra origem HTTPS exata. O frontend encaminha `/api/*` à função.
 
