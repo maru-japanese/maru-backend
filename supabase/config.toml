@@ -1,0 +1,5 @@
+project_id = "qxtgaalmyzyldmcpwooo"
+
+[functions.maru-api]
+verify_jwt = false
+entrypoint = "./functions/maru-api/index.js"
