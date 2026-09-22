@@ -8,7 +8,7 @@
     "build:edge": "node scripts/build-edge.js",
     "dev": "node --watch --env-file-if-exists=.env backend/server.js",
     "start": "node --env-file-if-exists=.env backend/server.js",
-    "check": "node scripts/check.js",
+    "check": "node scripts/check.js && node scripts/check-shared.js",
     "test": "node --test tests/*.test.js",
     "backup": "node --env-file-if-exists=.env scripts/backup.js",
     "migrate:sqlite": "node --env-file-if-exists=.env scripts/migrate-sqlite.js"

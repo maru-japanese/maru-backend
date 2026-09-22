@@ -13,6 +13,8 @@ contas Google usam Supabase Auth. O frontend estático fica na Vercel e encaminh
 
 `shared/` contém o conteúdo e as regras de estudo. `backend/phraseService.js`,
 `speechService.js` e `siteConfig.js` são reutilizados pela Edge Function.
+O conteúdo de `shared/` deve ser mantido igual ao do `maru-frontend/shared/`;
+`npm run check` compara as duas cópias quando os repositórios estão lado a lado.
 `backend/server.js`, SQLite e o Dockerfile permanecem somente como adaptador
 local e para testes legados; não são a infraestrutura de produção.
 
