@@ -65,3 +65,16 @@ test("Supabase repository retries a conflicting version", async () => {
   assert.equal(merged.xp.total, 35);
   assert.equal((await progress.read("browser-a")).xp.total, 35);
 });
+
+test("modern Supabase secret key stays in apikey rather than Authorization", async () => {
+  const key = "sb_secret_example";
+  const progress = createProgressRepository({
+    url: "https://example.supabase.co", serviceKey: key,
+    fetchImpl: async (_input, options) => {
+      assert.equal(options.headers.apikey, key);
+      assert.equal(options.headers.Authorization, undefined);
+      return Response.json([]);
+    }
+  });
+  assert.equal((await progress.read("browser-a")).xp.total, 0);
+});

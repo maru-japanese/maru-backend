@@ -3,7 +3,8 @@ import { mergeSnapshots, normalizeSnapshot } from "../../../shared/progress.js";
 function restHeaders(key, method) {
   return {
     apikey: key,
-    Authorization: `Bearer ${key}`,
+    // Opaque sb_secret_* keys are not JWTs and must not be sent as Bearer tokens.
+    ...(!key.startsWith("sb_secret_") ? { Authorization: `Bearer ${key}` } : {}),
     Accept: "application/json",
     ...(method !== "GET" ? {
       "Content-Type": "application/json",

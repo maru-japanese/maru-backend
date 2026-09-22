@@ -130,10 +130,17 @@ export function createMaruHandler({ repository, auth, speech, config = { support
 
 function environment() {
   const get = key => globalThis.Deno?.env.get(key) || globalThis.process?.env[key] || "";
+  const defaultKey = (dictionary, legacy) => {
+    try {
+      const key = JSON.parse(dictionary || "{}").default;
+      if (typeof key === "string" && key) return key;
+    } catch {}
+    return legacy;
+  };
   return {
     SUPABASE_URL: get("SUPABASE_URL"),
-    SUPABASE_ANON_KEY: get("SUPABASE_ANON_KEY"),
-    SUPABASE_SERVICE_ROLE_KEY: get("SUPABASE_SERVICE_ROLE_KEY"),
+    SUPABASE_ANON_KEY: defaultKey(get("SUPABASE_PUBLISHABLE_KEYS"), get("SUPABASE_ANON_KEY")),
+    SUPABASE_SERVICE_ROLE_KEY: defaultKey(get("SUPABASE_SECRET_KEYS"), get("SUPABASE_SERVICE_ROLE_KEY")),
     MARU_PUBLIC_ORIGIN: get("MARU_PUBLIC_ORIGIN") || "https://maru-frontend.vercel.app",
     MARU_GOOGLE_ENABLED: get("MARU_GOOGLE_ENABLED"),
     TTS_QUEST_API_KEY: get("TTS_QUEST_API_KEY"),
