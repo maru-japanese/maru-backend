@@ -1,0 +1,44 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { createServer } from "../backend/server.js";
+import { createProgressStorage } from "../backend/storage.js";
+
+
+test("API serves content, validates phrases and round-trips isolated progress", async t => {
+  const directory = await mkdtemp(path.join(tmpdir(), "maru-api-test-"));
+  const storage = createProgressStorage(directory);
+  const server = createServer({ storage, speech: { prepare: async text => ({ url: "https://audio1.tts.quest/v1/data/abc/audio.mp3s", attribution: "VOICEVOX:ずんだもん", text }) } });
+  await new Promise((resolve, reject) => { server.once("error", reject); server.listen(0, "127.0.0.1", resolve); });
+  t.after(async () => { await new Promise(resolve => server.close(resolve)); await rm(directory, { recursive: true, force: true }); });
+  const base = "http://127.0.0.1:" + server.address().port;
+  const health = await fetch(base + "/api/health").then(res => res.json());
+  assert.equal(health.ok, true);
+  const content = await fetch(base + "/api/content").then(res => res.json());
+  assert.equal(content.lessons.length, 37);
+  assert.equal(content.beginnerKanji.length, 20);
+  assert.ok(content.vocabulary.length >= 60);
+  assert.equal(content.exerciseGroups.length, 4);
+  assert.equal(content.glossary.length, 26);
+  const snapshot = { lessons: { welcome: { completedAt: 123, score: 3 } }, preferences: { romaji: false, dailyGoal: 10 }, xp: { total: 30 }, reviews: { test: { due: 999, attempts: 2 } } };
+  const saved = await fetch(base + "/api/progress", { method: "PUT", headers: { "Content-Type": "application/json", "x-maru-user": "test" }, body: JSON.stringify(snapshot) }).then(res => res.json());
+  assert.equal(saved.lessons.welcome.completedAt, 123);
+  const reloaded = await fetch(base + "/api/progress", { headers: { "x-maru-user": "test" } }).then(res => res.json());
+  assert.deepEqual(saved, reloaded);
+  assert.equal(reloaded.preferences.dailyGoal, 10);
+  const empty = await fetch(base + "/api/progress").then(res => res.json());
+  assert.equal(empty.xp.total, 0);
+  const check = await fetch(base + "/api/phrase/check", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ exerciseId: "water", text: "みずをのみます" }) }).then(res => res.json());
+  assert.equal(check.correct, true);
+  assert.equal((await fetch(base + "/api/progress", { method: "PUT", body: "{" })).status, 400);
+  assert.equal((await fetch(base + "/")).status, 404);
+  const audio = await fetch(base + "/api/audio", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({text:"こんにちは"}) });
+  assert.equal(audio.status,200);
+  assert.equal((await audio.json()).attribution,"VOICEVOX:ずんだもん");
+  assert.equal((await fetch(base+"/api/audio",{method:"POST",body:JSON.stringify({text:42})})).status,400);
+  assert.equal((await fetch(base+"/api/audio",{method:"POST",body:JSON.stringify({text:"あ".repeat(501)})})).status,400);
+  await Promise.all([storage.write({ xp: { total: 1 } }, "race"), storage.write({ xp: { total: 2 } }, "race")]);
+  assert.equal((await storage.read("race")).xp.total, 2);
+});

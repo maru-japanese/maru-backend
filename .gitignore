@@ -1,0 +1,13 @@
+node_modules/
+.DS_Store
+
+# Persistência local do backend de desenvolvimento.
+data/progress/*.json
+data/progress/*.tmp
+
+# Local accounts, sessions, backups and service credentials.
+.env
+.env.*
+!.env.example
+data/**/*.sqlite*
+backups/

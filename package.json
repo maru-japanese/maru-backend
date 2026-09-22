@@ -1,0 +1,21 @@
+{
+  "name": "maru-backend",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "API, autenticação e persistência da plataforma Maru.",
+  "scripts": {
+    "dev": "node --watch --env-file-if-exists=.env backend/server.js",
+    "start": "node --env-file-if-exists=.env backend/server.js",
+    "check": "node scripts/check.js",
+    "test": "node --test tests/*.test.js",
+    "backup": "node --env-file-if-exists=.env scripts/backup.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.3",
+    "google-auth-library": "^11.0.2"
+  }
+}
