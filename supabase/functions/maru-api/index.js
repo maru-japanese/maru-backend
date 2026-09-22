@@ -76,6 +76,22 @@ export function createMaruHandler({ repository, auth, speech, config = { support
         }
       }
 
+      if (pathname === "/api/phrase/check") {
+        if (request.method !== "POST") return json(405, { error: "Método não permitido." });
+        return json(200, checkPhrase(await readJson(request)));
+      }
+      if (pathname === "/api/audio") {
+        if (request.method !== "POST") return json(405, { error: "Método não permitido." });
+        const body = await readJson(request);
+        if (typeof body.text !== "string" || body.text.length > 500) {
+          return json(400, { error: "Escolha um áudio do conteúdo de estudo." });
+        }
+        return json(200, await speech.prepare(body.text));
+      }
+      if (pathname !== "/api/account" && pathname !== "/api/auth/logout" && pathname !== "/api/progress") {
+        return json(404, { error: "Endpoint não encontrado." });
+      }
+
       const session = await auth.session(request);
       cookies = session.cookies;
       if (pathname === "/api/account" && request.method === "GET") {
@@ -85,13 +101,12 @@ export function createMaruHandler({ repository, auth, speech, config = { support
         return json(200, { ok: true }, await auth.logout(request, session.access));
       }
 
-      const browserId = request.headers.get("x-maru-user") || "";
-      if (!session.user && !/^browser-[a-f0-9-]{20,60}$/.test(browserId)) {
-        return json(400, { error: "Perfil de navegador inválido." }, cookies);
-      }
-      const ownerId = session.user ? "account:" + session.user.id : browserId;
-
       if (pathname === "/api/progress") {
+        const browserId = request.headers.get("x-maru-user") || "";
+        if (!session.user && !/^browser-[a-f0-9-]{20,60}$/.test(browserId)) {
+          return json(400, { error: "Perfil de navegador inválido." }, cookies);
+        }
+        const ownerId = session.user ? "account:" + session.user.id : browserId;
         const expected = request.headers.get("x-maru-account");
         if ((expected && expected !== session.user?.id) || (session.user && request.method !== "GET" && expected !== session.user.id)) {
           return json(409, { error: "Sua conta mudou. Recarregue a página para continuar." }, cookies);
@@ -102,16 +117,6 @@ export function createMaruHandler({ repository, auth, speech, config = { support
           return json(200, await repository.write(ownerId, await readJson(request)), cookies);
         }
         return json(405, { error: "Método não permitido." }, cookies);
-      }
-      if (pathname === "/api/phrase/check" && request.method === "POST") {
-        return json(200, checkPhrase(await readJson(request)), cookies);
-      }
-      if (pathname === "/api/audio" && request.method === "POST") {
-        const body = await readJson(request);
-        if (typeof body.text !== "string" || body.text.length > 500) {
-          return json(400, { error: "Escolha um áudio do conteúdo de estudo." }, cookies);
-        }
-        return json(200, await speech.prepare(body.text), cookies);
       }
       return json(404, { error: "Endpoint não encontrado." }, cookies);
     } catch (error) {
