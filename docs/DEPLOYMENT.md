@@ -1,104 +1,77 @@
-# Contas, hospedagem e manutenção
+# Supabase: API, Auth e progresso
 
-## Ambiente
+O site público é `https://maru-frontend.vercel.app` na Vercel. A API é a Edge
+Function `maru-api` do projeto Supabase `qxtgaalmyzyldmcpwooo`; os dados ficam
+no Postgres do mesmo projeto. Não há servidor Node ou volume SQLite em produção.
 
-Requer Node.js 22 ou superior. As versões instaladas de better-sqlite3 e
-google-auth-library exigem esse mínimo. O frontend continua em módulos nativos,
-sem build obrigatório.
+## Banco
 
-    npm ci
-    cp .env.example .env
-    npm run dev
+O schema está em `supabase/migrations/20260922200355_maru_progress.sql`. A tabela
+`public.maru_progress` usa RLS habilitada e não concede acesso direto a `anon`
+nem `authenticated`. Só a função com chave de serviço lê e mescla snapshots.
+Cada escrita compara a versão para evitar perder uma atualização concorrente.
 
-O arquivo .env é ignorado pelo Git. npm run dev e npm start o carregam.
-Não cole segredos em arquivos do frontend, testes ou documentação.
+Antes de aplicar migrações futuras, confira o histórico remoto e faça backup
+do banco no Supabase. Nunca exponha a chave de serviço no frontend, nos commits
+ou nos logs.
 
-## Google
+## Edge Function
 
-1. No projeto Google, configure a tela de consentimento e crie um cliente OAuth
-   do tipo **Web application**. Durante testes, adicione os usuários de teste
-   conforme a configuração do projeto.
-2. Cadastre exatamente a URL de retorno:
-   http://127.0.0.1:5173/api/auth/google/callback no ambiente local ou
-   https://seu-dominio/api/auth/google/callback em produção.
-3. Preencha GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET e MARU_PUBLIC_ORIGIN.
-   A origem deve corresponder à URL usada no navegador, sem caminho.
-4. Reinicie o servidor. O botão passa a aparecer em Meu ritmo.
+```bash
+npm ci
+npm run check
+npm test
+npm run build:edge
+supabase functions deploy maru-api --project-ref qxtgaalmyzyldmcpwooo
+```
 
-Somente openid, email e profile são solicitados. O servidor usa state ligado ao
-navegador, PKCE e nonce; valida o ID token com a biblioteca oficial e cria uma
-sessão própria. Tokens Google não são persistidos. A sessão dura até 30 dias,
-tem cookie HttpOnly/SameSite e Secure em HTTPS, e só seu hash fica no banco.
-O cabeçalho x-maru-user serve apenas a perfis anônimos; contas são resolvidas pelo cookie.
+O `supabase/config.toml` aponta para o bundle gerado. A função usa as variáveis
+`SUPABASE_URL`, `SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` fornecidas pelo
+ambiente Supabase. A origem permitida padrão é
+`https://maru-frontend.vercel.app`; `MARU_PUBLIC_ORIGIN` pode substituí-la por
+outra origem HTTPS exata. O frontend encaminha `/api/*` à função.
 
-O primeiro acesso de uma conta reúne seu cache local, o perfil anônimo deste
-navegador e o snapshot da conta no servidor. Uma marca por conta evita repetir
-a importação anônima. Sair revoga a sessão e retorna ao perfil anônimo. Caches
-de contas são separados por ID. Uma aba detecta troca de identidade e pede
-recarga antes de sincronizar novamente.
+Variáveis opcionais da função:
 
-Referências: [OAuth para servidor web](https://developers.google.com/identity/protocols/oauth2/web-server),
-[validação de ID token](https://developers.google.com/identity/sign-in/web/backend-auth) e
-[PKCE na biblioteca Google](https://github.com/googleapis/google-auth-library-nodejs/blob/main/samples/oauth2-codeVerifier.js).
+| Variável | Uso |
+| --- | --- |
+| `MARU_PUBLIC_ORIGIN` | Origem HTTPS do site, sem caminho ou barra final. |
+| `MARU_GOOGLE_ENABLED` | `true` somente depois de configurar e testar Google no Supabase Auth. |
+| `TTS_QUEST_API_KEY` | Chave da API de pronúncia, se disponível. |
+| `MARU_SUPPORT_BR_URL` / `MARU_SUPPORT_GLOBAL_URL` | Links HTTPS reais de apoio. |
 
-## SQLite e migração
+`verify_jwt = false` é intencional: conteúdo e perfis de navegador são públicos.
+As contas são validadas com Supabase Auth dentro da função, e escritas verificam
+origem e identidade.
 
-MARU_DATA_DIR aponta para uma pasta persistente. Sem essa variável, o padrão
-é data/progress no repositório, independente do diretório de execução.
-O banco maru.sqlite usa WAL, chaves estrangeiras e consultas parametrizadas.
+## Login Google
 
-Tabelas: users, sessions, progress e oauth_states (estado temporário do login).
-O schema do snapshot continua na versão 2, com campos adicionais normalizados.
-Cada JSON legado é importado ao ler o perfil pela primeira vez; o arquivo original
-permanece intacto. Escritas usam transação e a mesclagem existente preserva a
-união de lições e o registro mais recente por item.
+1. Ative Google em Supabase Auth e configure as credenciais do cliente OAuth no
+   painel privado do projeto.
+2. No Google Cloud, use como retorno do provedor o callback exibido pelo
+   Supabase Auth (normalmente `/auth/v1/callback` no domínio do projeto).
+3. Em Supabase Auth, permita o redirecionamento
+   `https://maru-frontend.vercel.app/api/auth/google/callback`.
+4. Configure `MARU_GOOGLE_ENABLED=true` para a função e publique novamente.
+5. Teste login, logout e troca de conta numa janela privada na URL da Vercel.
 
-A mesclagem atual preserva o maior total de contadores; ela não soma tentativas
-concorrentes de dois aparelhos como um histórico de eventos distribuído.
+Até lá, o botão de login fica indisponível; estudar sem conta continua possível.
+Os cookies de sessão são `HttpOnly`, `SameSite=Lax` e `Secure` em HTTPS. O
+navegador não recebe tokens em JavaScript.
 
-## Hospedar
+## Dados SQLite antigos
 
-Use um processo Node com disco persistente, por exemplo um container numa VPS
-ou um serviço com volume. Não use filesystem efêmero de função serverless.
-O manual cita Render/Fly.io/VPS como opções, mas planos, preços e disponibilidade
-devem ser conferidos antes de contratar. Nenhum serviço foi contratado nesta implementação.
+`npm run migrate:sqlite -- --source=/caminho/maru.sqlite` mostra quantos perfis
+anônimos podem ser importados. `--apply` os envia usando a chave de serviço do
+ambiente privado; o arquivo de origem é preservado. Não migre perfis de contas
+antigas automaticamente: primeiro concilie o ID delas com Supabase Auth.
 
-    docker build -t maru .
-    docker volume create maru-data
-    docker run --env-file .env -e HOST=0.0.0.0 -e MARU_DATA_DIR=/var/lib/maru -p 5173:5173 -v maru-data:/var/lib/maru maru
+O adaptador local `backend/server.js` e `npm run backup` ainda servem para
+verificar ou preservar um SQLite legado. Eles não protegem o Postgres remoto;
+configure backups e retenção no próprio projeto Supabase.
 
-Configure MARU_PUBLIC_ORIGIN com o domínio público HTTPS e termine TLS no
-proxy ou host. O servidor não confia em cabeçalhos de proxy para escolher a
-origem do OAuth. O container executa como usuário node; o volume precisa
-permitir escrita por esse usuário.
+## Verificação após publicar
 
-## Backup e recuperação
-
-    npm run backup
-    npm run backup -- /caminho/seguro/maru-backup.sqlite
-
-O comando usa a API de backup online do SQLite, incluindo dados confirmados
-do WAL. Copiar somente maru.sqlite enquanto o banco está ativo pode perder
-dados recentes. O destino não pode existir; backups e banco são privados.
-[Referência da API de backup](https://github.com/WiseLibs/better-sqlite3/blob/master/docs/api.md#backupdestination-options---promise).
-
-Agende o comando no host e envie a cópia para armazenamento externo privado
-com retenção definida. Para restaurar: pare o servidor; preserve a pasta atual
-como cópia; coloque o backup como maru.sqlite em uma pasta limpa e gravável;
-aponte MARU_DATA_DIR para ela e reinicie. Não misture um backup com arquivos
-WAL/SHM de outro estado. Confira um perfil de teste antes de reabrir acesso.
-
-## Apoio
-
-MARU_SUPPORT_BR_URL e MARU_SUPPORT_GLOBAL_URL aceitam links HTTPS reais,
-como a página de apoio do Maru no Apoia.se ou Ko-fi. Só esses links
-públicos são enviados ao navegador. Sem endereço, a página informa que o canal
-está sendo preparado e não exibe botão de pagamento.
-
-## Validação e limites
-
-Os testes de login usam identidade Google controlada: sucesso, estado/nonce inválidos,
-replay, expiração, logout, origem e isolamento. Ativar e testar a autorização real
-requer as credenciais do projeto. O Dockerfile é uma configuração de entrega;
-publicar exige escolher e configurar o host. IA e link mágico são fases posteriores
-registradas no backlog.
+Confira `/api/health`, uma lição sem conta, a gravação de progresso e, se ativo,
+login/logout. Falhas da função devem ser investigadas nos logs do Supabase sem
+registrar cookies, tokens ou conteúdo privado do usuário.

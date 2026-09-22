@@ -1,100 +1,72 @@
 # Maru Backend
 
 API do [Maru](https://github.com/maru-japanese), uma plataforma gratuita em
-português para aprender japonês desde o primeiro contato com o idioma.
-
-Este repositório concentra o que precisa permanecer no servidor: sincronização
-de progresso, contas Google, persistência em SQLite, validação de frases e a
-integração de pronúncia. A interface vive no repositório
+português para aprender japonês. A interface está no repositório
 [`maru-frontend`](https://github.com/maru-japanese/maru-frontend).
 
-## Tecnologias
+## Arquitetura
 
-- Node.js 22 ou mais recente;
-- SQLite com `better-sqlite3`;
-- OAuth 2.0 do Google com PKCE, state e nonce;
-- API TTS Quest para pronúncia japonesa.
+Em produção, a API roda como a Edge Function `maru-api` no projeto Supabase
+`qxtgaalmyzyldmcpwooo`. O progresso fica em `public.maru_progress` no Postgres;
+contas Google usam Supabase Auth. O frontend estático fica na Vercel e encaminha
+`/api/*` à função, preservando uma única origem para o navegador.
 
-## Rodar localmente
+`shared/` contém o conteúdo e as regras de estudo. `backend/phraseService.js`,
+`speechService.js` e `siteConfig.js` são reutilizados pela Edge Function.
+`backend/server.js`, SQLite e o Dockerfile permanecem somente como adaptador
+local e para testes legados; não são a infraestrutura de produção.
+
+## Desenvolvimento
+
+Requer Node.js 22 ou superior. Para usar o adaptador local:
 
 ```bash
-npm install
+npm ci
 cp .env.example .env
 npm run dev
 ```
 
-A API inicia em `http://127.0.0.1:5173`. Confira com:
+Ele responde em `http://127.0.0.1:5173/api/health`. Em outro terminal, rode
+`npm run dev` no `maru-frontend`, cujo proxy local usa essa API. O SQLite local
+fica em `data/progress/maru.sqlite`; não é sincronizado automaticamente com o
+Supabase.
+
+Para gerar o arquivo único da Edge Function:
 
 ```bash
-curl http://127.0.0.1:5173/api/health
+npm run build:edge
 ```
 
-O banco é criado em `data/progress/maru.sqlite`. Defina `MARU_DATA_DIR` para
-usar outro diretório, principalmente em produção.
+O resultado `supabase/functions/maru-api/bundle.js` é gerado e ignorado pelo Git.
+Veja [publicação e configuração](docs/DEPLOYMENT.md).
 
-Para trabalhar com os dois repositórios ao mesmo tempo, inicie este projeto e,
-em outro terminal, execute `npm run dev` no `maru-frontend`. O servidor de
-desenvolvimento do frontend encaminha `/api` para esta API.
-
-## Variáveis de ambiente
-
-| Variável | Uso |
-| --- | --- |
-| `HOST` | Interface de rede; o padrão é `127.0.0.1`. |
-| `PORT` | Porta HTTP; o padrão é `5173`. |
-| `MARU_PUBLIC_ORIGIN` | Origem pública pela qual o navegador acessa `/api`, usada no OAuth e na proteção de escrita. |
-| `MARU_DATA_DIR` | Diretório persistente do SQLite. |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Credenciais OAuth opcionais. |
-| `TTS_QUEST_API_KEY` | Chave opcional para maior capacidade de voz. |
-| `MARU_SUPPORT_BR_URL` / `MARU_SUPPORT_GLOBAL_URL` | Links HTTPS opcionais de apoio ao projeto. |
-
-Sem credenciais Google, o estudo anônimo e a sincronização por perfil de
-navegador continuam disponíveis.
-
-## Endpoints principais
+## API
 
 | Método | Caminho | Responsabilidade |
 | --- | --- | --- |
 | `GET` | `/api/health` | Estado da API. |
-| `GET` | `/api/content` | Catálogos e currículo. |
+| `GET` | `/api/content` | Conteúdo e currículo. |
 | `GET`, `PUT` | `/api/progress` | Leitura e sincronização do progresso. |
-| `POST` | `/api/phrase/check` | Validação de exercícios guiados. |
+| `POST` | `/api/phrase/check` | Verificação de exercícios guiados. |
 | `POST` | `/api/audio` | Preparação de pronúncia. |
 | `GET` | `/api/account` | Estado da sessão. |
-| `GET` | `/api/auth/google` | Início do login Google. |
+| `GET` | `/api/auth/google` | Início do login Google, quando configurado. |
 | `POST` | `/api/auth/logout` | Encerramento da sessão. |
 
-## Verificar
+## Verificação e dados antigos
 
 ```bash
 npm run check
 npm test
 ```
 
-Os testes usam diretórios temporários e não alteram o progresso local.
-
-## Dados e segurança
-
-As sessões usam cookie HttpOnly e o banco armazena apenas o hash do token. Os
-tokens do Google são descartados depois da confirmação da identidade. Escritas
-autenticadas validam origem e identidade da conta antes de mesclar o snapshot.
-
-Para gerar uma cópia consistente do SQLite:
+Para inspecionar uma migração de progresso do SQLite antigo sem alterar nada:
 
 ```bash
-npm run backup
-npm run backup -- /caminho/seguro/maru-backup.sqlite
+npm run migrate:sqlite -- --source=/caminho/maru.sqlite
 ```
 
-Consulte [hospedagem e recuperação](docs/DEPLOYMENT.md) e
-[integrações externas](docs/INTEGRATIONS.md) antes de publicar.
-
-## Container
-
-```bash
-docker build -t maru-backend .
-docker run --env-file .env -e HOST=0.0.0.0 -p 5173:5173 maru-backend
-```
-
-Em produção, monte `MARU_DATA_DIR` em um volume persistente e exponha `/api`
-sob a mesma origem pública do frontend por meio de um proxy reverso.
+Acrescente `--apply` apenas após configurar `SUPABASE_URL` e
+`SUPABASE_SERVICE_ROLE_KEY` no ambiente privado. Somente perfis anônimos
+`browser-*` são enviados; contas legadas exigem revisão de identidade. O
+SQLite original nunca é removido. Consulte [a operação](docs/DEPLOYMENT.md).
