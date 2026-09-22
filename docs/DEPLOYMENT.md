@@ -1,7 +1,9 @@
 # Supabase: API, Auth e progresso
 
-O site público é `https://maru-frontend.vercel.app` na Vercel. A API é a Edge
-Function `maru-api` do projeto Supabase `qxtgaalmyzyldmcpwooo`; os dados ficam
+O endereço previsto para o site é `https://maru-frontend.vercel.app` na Vercel.
+Confirme a publicação do Maru nessa URL antes de considerá-la pronta: uma página
+de outro projeto ou um `/api/health` com 404 não valida a integração. A API é a
+Edge Function `maru-api` do projeto Supabase `qxtgaalmyzyldmcpwooo`; os dados ficam
 no Postgres do mesmo projeto. Não há servidor Node ou volume SQLite em produção.
 
 ## Banco
