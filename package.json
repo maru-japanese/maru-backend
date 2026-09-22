@@ -5,6 +5,7 @@
   "type": "module",
   "description": "API, autenticação e persistência da plataforma Maru.",
   "scripts": {
+    "build:edge": "node scripts/build-edge.js",
     "dev": "node --watch --env-file-if-exists=.env backend/server.js",
     "start": "node --env-file-if-exists=.env backend/server.js",
     "check": "node scripts/check.js",
@@ -17,5 +18,8 @@
   "dependencies": {
     "better-sqlite3": "^13.0.3",
     "google-auth-library": "^11.0.2"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
   }
 }
