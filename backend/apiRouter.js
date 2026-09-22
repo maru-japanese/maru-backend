@@ -1,9 +1,4 @@
-import { VOCABULARY, VOCABULARY_GROUPS } from "../shared/vocabulary.js";
-import { EXERCISE_GROUPS } from "../shared/exercises.js";
-import { GLOSSARY } from "../shared/glossary.js";
-import { DATA, LEVELS, LEVEL_META, CAT_LABEL, CAT_LABEL_SING, KANA, KANA_ROWS, KANA_GROUPS, BUILDER_PATTERNS } from "../shared/content.js";
-import { MODULES, LESSONS } from "../shared/curriculum.js";
-import { BEGINNER_KANJI, EXPRESSIONS, PARTICLES, SENTENCES, COMBINATIONS } from "../shared/catalog.js";
+import { CONTENT } from "./contentService.js";
 import { checkPhrase } from "./phraseService.js";
 import { readJson, sendJson } from "./http.js";
 
@@ -34,12 +29,7 @@ export async function handleApi(req, res, url, storage, speech, auth, config) {
     return sendJson(res, 200, await speech.prepare(body.text));
   }
   if (pathname === "/api/health" && req.method === "GET") return sendJson(res, 200, { ok: true, name: "maru", version: 2 });
-  if (pathname === "/api/content" && req.method === "GET") return sendJson(res, 200, {
-    vocabulary: VOCABULARY, vocabularyGroups: VOCABULARY_GROUPS, exerciseGroups: EXERCISE_GROUPS, glossary: GLOSSARY,
-    data: DATA, levels: LEVELS, levelMeta: LEVEL_META, catLabel: CAT_LABEL, catLabelSingular: CAT_LABEL_SING,
-    kanaRows: KANA_ROWS, kanaGroups: KANA_GROUPS, kana: KANA, builderPatterns: BUILDER_PATTERNS,
-    modules: MODULES, lessons: LESSONS, beginnerKanji: BEGINNER_KANJI, expressions: EXPRESSIONS, particles: PARTICLES, sentences: SENTENCES, combinations: COMBINATIONS
-  });
+  if (pathname === "/api/content" && req.method === "GET") return sendJson(res, 200, CONTENT);
   if (pathname === "/api/progress") {
     const expected = req.headers["x-maru-account"];
     if ((expected && expected !== account?.id) || (account && req.method !== "GET" && expected !== account.id)) return sendJson(res, 409, { error: "Sua conta mudou. Recarregue a página para continuar." });

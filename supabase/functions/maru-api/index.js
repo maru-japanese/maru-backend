@@ -1,9 +1,4 @@
-import { VOCABULARY, VOCABULARY_GROUPS } from "../../../shared/vocabulary.js";
-import { EXERCISE_GROUPS } from "../../../shared/exercises.js";
-import { GLOSSARY } from "../../../shared/glossary.js";
-import { DATA, LEVELS, LEVEL_META, CAT_LABEL, CAT_LABEL_SING, KANA, KANA_ROWS, KANA_GROUPS, BUILDER_PATTERNS } from "../../../shared/content.js";
-import { MODULES, LESSONS } from "../../../shared/curriculum.js";
-import { BEGINNER_KANJI, EXPRESSIONS, PARTICLES, SENTENCES, COMBINATIONS } from "../../../shared/catalog.js";
+import { CONTENT } from "../../../backend/contentService.js";
 import { createSpeechService } from "../../../backend/speechService.js";
 import { checkPhrase } from "../../../backend/phraseService.js";
 import { publicConfig } from "../../../backend/siteConfig.js";
@@ -41,14 +36,6 @@ async function readJson(request) {
   }
 }
 
-const content = {
-  vocabulary: VOCABULARY, vocabularyGroups: VOCABULARY_GROUPS, exerciseGroups: EXERCISE_GROUPS, glossary: GLOSSARY,
-  data: DATA, levels: LEVELS, levelMeta: LEVEL_META, catLabel: CAT_LABEL, catLabelSingular: CAT_LABEL_SING,
-  kanaRows: KANA_ROWS, kanaGroups: KANA_GROUPS, kana: KANA, builderPatterns: BUILDER_PATTERNS,
-  modules: MODULES, lessons: LESSONS, beginnerKanji: BEGINNER_KANJI, expressions: EXPRESSIONS,
-  particles: PARTICLES, sentences: SENTENCES, combinations: COMBINATIONS
-};
-
 export function createMaruHandler({ repository, auth, speech, config = { support: [] } }) {
   return async function handle(request) {
     const url = new URL(request.url);
@@ -57,7 +44,7 @@ export function createMaruHandler({ repository, auth, speech, config = { support
     let cookies = [];
     try {
       if (pathname === "/api/health" && request.method === "GET") return json(200, { ok: true, name: "maru", version: 2 });
-      if (pathname === "/api/content" && request.method === "GET") return json(200, content);
+      if (pathname === "/api/content" && request.method === "GET") return json(200, CONTENT);
       if (pathname === "/api/config" && request.method === "GET") return json(200, config);
       if (pathname === "/api/auth/google" && request.method === "GET") {
         try {
