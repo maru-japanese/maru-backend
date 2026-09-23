@@ -111,5 +111,5 @@ test("email account routes validate origin and keep Supabase sessions in HttpOnl
   assert.ok(login.headers.get("set-cookie").includes("Secure"));
   assert.equal((await post("/recover", { email: "pessoa@example.test" })).status, 200);
   assert.match(calls.at(-1).url, /recover\?redirect_to=https%3A%2F%2Fmaru\.example/);
-  assert.equal((await post("/complete", { refreshToken: "r".repeat(40) })).status, 200);
+  assert.equal((await post("/complete", { refreshToken: "v1." + "r".repeat(37) })).status, 200);
 });

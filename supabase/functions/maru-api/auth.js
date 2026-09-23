@@ -1,6 +1,6 @@
 const SESSION_AGE = 30 * 86400;
 const ACCESS_TOKEN = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
-const REFRESH_TOKEN = /^[A-Za-z0-9_-]{20,4096}$/;
+const REFRESH_TOKEN = /^[A-Za-z0-9._~-]{20,4096}$/;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function badInput(message) { throw Object.assign(new Error(message), { status: 400 }); }
