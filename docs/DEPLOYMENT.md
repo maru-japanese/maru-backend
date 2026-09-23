@@ -50,20 +50,29 @@ Variáveis opcionais da função:
 As contas são validadas com Supabase Auth dentro da função, e escritas verificam
 origem e identidade.
 
-## Login Google
+## Login por e-mail
 
-1. Ative Google em Supabase Auth e configure as credenciais do cliente OAuth no
-   painel privado do projeto.
-2. No Google Cloud, use como retorno do provedor o callback exibido pelo
-   Supabase Auth (normalmente `/auth/v1/callback` no domínio do projeto).
-3. Em Supabase Auth, permita o redirecionamento
-   `https://maru-frontend.vercel.app/api/auth/google/callback`.
-4. Configure `MARU_GOOGLE_ENABLED=true` para a função e publique novamente.
-5. Teste login, logout e troca de conta numa janela privada na URL da Vercel.
+Na auditoria de 23/09/2026, Supabase Auth estava com Email habilitado,
+cadastro aberto, confirmação de e-mail obrigatória e Google desativado. Antes
+de liberar cadastro ao público:
 
-Até lá, o botão de login fica indisponível; estudar sem conta continua possível.
-Os cookies de sessão são `HttpOnly`, `SameSite=Lax` e `Secure` em HTTPS. O
-navegador não recebe tokens em JavaScript.
+1. Configure um SMTP próprio no painel Supabase Auth. O serviço padrão de e-mail
+   do Supabase é restrito a destinatários autorizados e não serve para cadastro
+   público. Não coloque a senha SMTP no frontend nem no Git.
+2. Defina `https://maru-frontend.vercel.app` como Site URL e inclua a mesma
+   origem nas Redirect URLs permitidas em Supabase Auth.
+3. Publique a Edge Function desta branch e o frontend correspondente na Vercel.
+4. Teste cadastro, confirmação, entrada, recuperação de senha, saída e troca de
+   conta em uma janela privada, usando um e-mail externo real.
+
+Os links de confirmação/recuperação entregam tokens no fragmento da URL; o
+frontend apaga o fragmento imediatamente, troca o refresh token por uma sessão
+e guarda os tokens de sessão em cookies `HttpOnly`, `SameSite=Lax` e `Secure`.
+O fluxo de recuperação exige uma nova senha após abrir o link. Sem SMTP, os
+formulários podem aparecer, mas e-mails públicos não serão entregues.
+
+Google permanece desativado e não aparece na interface. O código OAuth legado
+fica isolado, sem ativação por padrão.
 
 ## Dados SQLite antigos
 

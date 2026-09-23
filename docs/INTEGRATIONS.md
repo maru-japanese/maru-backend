@@ -24,16 +24,16 @@ frases livres digitadas pelo aluno não são enviadas ao provedor de voz.
 Os efeitos de acerto e conclusão do Arcade usam osciladores Web Audio no navegador.
 São opcionais, independentes da pronúncia e não criam arquivos.
 
-## Identidade: Google OAuth
+## Identidade: Supabase Auth
 
-O login usa OAuth 2.0 para aplicações web, com state, PKCE e nonce. O Google
-confirma a identidade e o backend cria uma sessão própria; tokens do provedor
-não são persistidos. Somente os escopos `openid`, `email` e `profile` são
-solicitados.
+O login atual usa e-mail e senha. A API chama Supabase Auth e guarda a sessão
+em cookies `HttpOnly`, sem expor a chave de serviço ou os tokens a outras
+páginas. Cadastro e recuperação dependem de SMTP próprio e das URLs permitidas
+no painel Supabase. Google OAuth existe somente como integração desativada.
 
-- [OAuth 2.0 para aplicações web](https://developers.google.com/identity/protocols/oauth2/web-server).
-- [Validação de ID tokens](https://developers.google.com/identity/sign-in/web/backend-auth).
-- [Biblioteca Google Auth para Node.js](https://github.com/googleapis/google-auth-library-nodejs).
+- [Senhas e login por e-mail](https://supabase.com/docs/guides/auth/passwords).
+- [SMTP próprio para produção](https://supabase.com/docs/guides/auth/auth-smtp).
+- [URLs de retorno](https://supabase.com/docs/guides/auth/redirect-urls).
 
 KanjiAPI, KanjiVG e outros recursos usados diretamente pela experiência de
 estudo são documentados no repositório `maru-frontend`.

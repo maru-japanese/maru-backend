@@ -8,7 +8,7 @@ português para aprender japonês. A interface está no repositório
 
 Em produção, a API roda como a Edge Function `maru-api` no projeto Supabase
 `qxtgaalmyzyldmcpwooo`. O progresso fica em `public.maru_progress` no Postgres;
-contas Google usam Supabase Auth. O frontend estático fica na Vercel e encaminha
+contas por e-mail usam Supabase Auth. O frontend estático fica na Vercel e encaminha
 `/api/*` à função, preservando uma única origem para o navegador.
 
 `shared/` contém o conteúdo e as regras de estudo. `backend/phraseService.js`,
@@ -52,7 +52,11 @@ Veja [publicação e configuração](docs/DEPLOYMENT.md).
 | `POST` | `/api/phrase/check` | Verificação de exercícios guiados. |
 | `POST` | `/api/audio` | Preparação de pronúncia. |
 | `GET` | `/api/account` | Estado da sessão. |
-| `GET` | `/api/auth/google` | Início do login Google, quando configurado. |
+| `POST` | `/api/auth/email/signup` | Cadastro por e-mail; requer confirmação. |
+| `POST` | `/api/auth/email/login` | Entrada com e-mail e senha. |
+| `POST` | `/api/auth/email/recover` | Envio do link de recuperação. |
+| `POST` | `/api/auth/email/complete` | Troca do link confirmado por sessão em cookie. |
+| `POST` | `/api/auth/email/password` | Alteração da senha após recuperação. |
 | `POST` | `/api/auth/logout` | Encerramento da sessão. |
 
 ## Verificação e dados antigos
