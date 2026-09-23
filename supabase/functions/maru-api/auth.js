@@ -1,6 +1,9 @@
 const SESSION_AGE = 30 * 86400;
 const ACCESS_TOKEN = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
 const REFRESH_TOKEN = /^[A-Za-z0-9_-]{20,4096}$/;
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function badInput(message) { throw Object.assign(new Error(message), { status: 400 }); }
 
 function base64url(bytes) {
   return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -57,8 +60,20 @@ export function createAuth({ supabaseUrl, anonKey, publicOrigin, googleEnabled =
     };
   }
 
+  function credentials(body) {
+    const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+    if (!EMAIL.test(email) || email.length > 254) badInput("Informe um e-mail válido.");
+    if (typeof body.password !== "string" || body.password.length < 8 || body.password.length > 72) badInput("A senha precisa ter entre 8 e 72 caracteres.");
+    return { email, password: body.password };
+  }
+
+  function authError(message, status = 400) {
+    throw Object.assign(new Error(message), { status });
+  }
+
   return {
     googleEnabled: Boolean(googleEnabled),
+    emailEnabled: true,
     assertSameOrigin(request) {
       const origin = request.headers.get("origin");
       if (request.headers.get("sec-fetch-site") === "cross-site" || (origin && origin !== site.origin)) {
@@ -87,6 +102,45 @@ export function createAuth({ supabaseUrl, anonKey, publicOrigin, googleEnabled =
       });
       if (!response.ok || !data.access_token || !data.refresh_token) throw new Error("Não foi possível concluir o login.");
       return { cookies: [...sessionCookies(data, secure), cookie("maru_oauth", "", 0, secure)] };
+    },
+    async signUp(request, body) {
+      this.assertSameOrigin(request);
+      const credentialsBody = credentials(body);
+      const path = "signup?redirect_to=" + encodeURIComponent(site.origin);
+      const { response } = await authRequest(path, { method: "POST", body: credentialsBody });
+      if (!response.ok) authError(response.status === 429 ? "Muitas tentativas. Aguarde e tente novamente." : "Não foi possível criar a conta agora. Tente novamente mais tarde.", response.status === 429 ? 429 : 400);
+      return { message: "Se o endereço puder ser cadastrado, você receberá um e-mail para confirmar a conta." };
+    },
+    async signIn(request, body) {
+      this.assertSameOrigin(request);
+      const { response, data } = await authRequest("token?grant_type=password", { method: "POST", body: credentials(body) });
+      if (!response.ok || !data.access_token || !data.refresh_token || !accountFrom(data.user)) {
+        authError(response.status === 429 ? "Muitas tentativas. Aguarde e tente novamente." : "E-mail ou senha incorretos, ou conta ainda não confirmada.", response.status === 429 ? 429 : 401);
+      }
+      return { user: accountFrom(data.user), cookies: sessionCookies(data, secure) };
+    },
+    async recover(request, body) {
+      this.assertSameOrigin(request);
+      const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+      if (!EMAIL.test(email) || email.length > 254) badInput("Informe um e-mail válido.");
+      const path = "recover?redirect_to=" + encodeURIComponent(site.origin);
+      await authRequest(path, { method: "POST", body: { email } });
+      return { message: "Se houver uma conta nesse endereço, enviaremos um link para redefinir a senha." };
+    },
+    async completeLink(request, body) {
+      this.assertSameOrigin(request);
+      if (!REFRESH_TOKEN.test(body.refreshToken || "")) badInput("Link inválido ou expirado. Solicite outro e-mail.");
+      const { response, data } = await authRequest("token?grant_type=refresh_token", { method: "POST", body: { refresh_token: body.refreshToken } });
+      if (!response.ok || !data.access_token || !data.refresh_token || !accountFrom(data.user)) badInput("Link inválido ou expirado. Solicite outro e-mail.");
+      return { user: accountFrom(data.user), cookies: sessionCookies(data, secure) };
+    },
+    async changePassword(request, access, body) {
+      this.assertSameOrigin(request);
+      if (!ACCESS_TOKEN.test(access || "")) authError("Entre na conta para alterar a senha.", 401);
+      if (typeof body.password !== "string" || body.password.length < 8 || body.password.length > 72) badInput("A senha precisa ter entre 8 e 72 caracteres.");
+      const { response } = await authRequest("user", { method: "PUT", token: access, body: { password: body.password } });
+      if (!response.ok) authError("Não foi possível alterar a senha. Tente novamente.", 400);
+      return { ok: true };
     },
     async session(request) {
       const access = cookieValue(request, "maru_access");

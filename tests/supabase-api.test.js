@@ -80,3 +80,36 @@ test("Supabase Auth login uses PKCE and keeps provider tokens in HttpOnly cookie
   const session = await auth.session(new Request("https://maru.example/api/account", { headers: { cookie: "maru_access=aaa.bbb.ccc" } }));
   assert.equal(session.user.email, "pessoa@example.test");
 });
+
+test("email account routes validate origin and keep Supabase sessions in HttpOnly cookies", async () => {
+  const calls = [];
+  const auth = createAuth({
+    supabaseUrl: "https://example.supabase.co", anonKey: "public-key", publicOrigin: "https://maru.example",
+    fetchImpl: async (input, options) => {
+      calls.push({ url: String(input), options });
+      if (String(input).includes("grant_type=password") || String(input).includes("grant_type=refresh_token")) {
+        return Response.json({ access_token: "aaa.bbb.ccc", refresh_token: "r".repeat(40), expires_in: 3600,
+          user: { id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", email: "pessoa@example.test" } });
+      }
+      return Response.json({});
+    }
+  });
+  const handler = createMaruHandler({ auth, repository: {}, speech: {} });
+  const base = "https://example.supabase.co/functions/v1/maru-api/api/auth/email";
+  const post = (path, body, origin = "https://maru.example") => handler(new Request(base + path, {
+    method: "POST", headers: { origin, "content-type": "application/json" }, body: JSON.stringify(body)
+  }));
+  assert.equal((await post("/signup", { email: " pessoa@example.test ", password: "password123" })).status, 200);
+  assert.match(calls[0].url, /signup\?redirect_to=https%3A%2F%2Fmaru\.example/);
+  assert.equal(JSON.parse(calls[0].options.body).email, "pessoa@example.test");
+  assert.equal((await post("/signup", { email: "pessoa@example.test", password: "short" })).status, 400);
+  assert.equal((await post("/login", { email: "pessoa@example.test", password: "password123" }, "https://evil.example")).status, 403);
+  const login = await post("/login", { email: "pessoa@example.test", password: "password123" });
+  assert.equal(login.status, 200);
+  assert.equal((await login.json()).user.email, "pessoa@example.test");
+  assert.ok(login.headers.get("set-cookie").includes("HttpOnly"));
+  assert.ok(login.headers.get("set-cookie").includes("Secure"));
+  assert.equal((await post("/recover", { email: "pessoa@example.test" })).status, 200);
+  assert.match(calls.at(-1).url, /recover\?redirect_to=https%3A%2F%2Fmaru\.example/);
+  assert.equal((await post("/complete", { refreshToken: "r".repeat(40) })).status, 200);
+});

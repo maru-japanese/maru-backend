@@ -62,6 +62,18 @@ export function createMaruHandler({ repository, auth, speech, config = { support
           return redirect("/#/settings/login-failed", auth.failureCookies());
         }
       }
+      const emailRoutes = {
+        "/api/auth/email/signup": "signUp",
+        "/api/auth/email/login": "signIn",
+        "/api/auth/email/recover": "recover",
+        "/api/auth/email/complete": "completeLink"
+      };
+      if (Object.hasOwn(emailRoutes, pathname)) {
+        if (request.method !== "POST") return json(405, { error: "Método não permitido." });
+        const result = await auth[emailRoutes[pathname]](request, await readJson(request));
+        const { cookies: authCookies = [], ...payload } = result;
+        return json(200, payload, authCookies);
+      }
 
       if (pathname === "/api/phrase/check") {
         if (request.method !== "POST") return json(405, { error: "Método não permitido." });
@@ -75,14 +87,17 @@ export function createMaruHandler({ repository, auth, speech, config = { support
         }
         return json(200, await speech.prepare(body.text));
       }
-      if (pathname !== "/api/account" && pathname !== "/api/auth/logout" && pathname !== "/api/progress") {
+      if (pathname !== "/api/account" && pathname !== "/api/auth/logout" && pathname !== "/api/auth/email/password" && pathname !== "/api/progress") {
         return json(404, { error: "Endpoint não encontrado." });
       }
 
       const session = await auth.session(request);
       cookies = session.cookies;
       if (pathname === "/api/account" && request.method === "GET") {
-        return json(200, { user: session.user, googleEnabled: auth.googleEnabled }, cookies);
+        return json(200, { user: session.user, googleEnabled: auth.googleEnabled, emailEnabled: auth.emailEnabled }, cookies);
+      }
+      if (pathname === "/api/auth/email/password" && request.method === "POST") {
+        return json(200, await auth.changePassword(request, session.access, await readJson(request)), cookies);
       }
       if (pathname === "/api/auth/logout" && request.method === "POST") {
         return json(200, { ok: true }, await auth.logout(request, session.access));
