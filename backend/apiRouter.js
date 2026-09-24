@@ -2,10 +2,9 @@ import { CONTENT } from "./contentService.js";
 import { checkPhrase } from "./phraseService.js";
 import { readJson, sendJson } from "./http.js";
 
-export async function handleApi(req, res, url, storage, speech, auth, config) {
+export async function handleApi(req, res, url, storage, speech, auth) {
   const pathname = url.pathname;
   const redirect = (location, cookie) => { res.writeHead(303, { Location: location, "Cache-Control": "no-store", ...(cookie ? { "Set-Cookie": cookie } : {}) }); res.end(); };
-  if (pathname === "/api/config" && req.method === "GET") return sendJson(res, 200, config);
   if (pathname === "/api/account" && req.method === "GET") return sendJson(res, 200, auth.status(req));
   if (pathname === "/api/auth/google" && req.method === "GET") {
     try { const login = await auth.begin(); return redirect(login.url, login.cookie); }

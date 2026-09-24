@@ -6,13 +6,12 @@ import { sendJson } from "./http.js";
 import { createProgressStorage } from "./storage.js";
 import { createSpeechService } from "./speechService.js";
 import { createAuthService } from "./authService.js";
-import { publicConfig } from "./siteConfig.js";
 
-export function createServer({ storage = createProgressStorage(), speech = createSpeechService(), auth = createAuthService(storage), config = publicConfig() } = {}) {
+export function createServer({ storage = createProgressStorage(), speech = createSpeechService(), auth = createAuthService(storage) } = {}) {
   const server = http.createServer(async (req, res) => {
     try {
       const url = new URL(req.url || "/", "http://localhost");
-      if (url.pathname.startsWith("/api/")) await handleApi(req, res, url, storage, speech, auth, config);
+      if (url.pathname.startsWith("/api/")) await handleApi(req, res, url, storage, speech, auth);
       else sendJson(res, 404, { error: "Use um endpoint /api do Maru." });
     } catch (error) {
       if (!res.headersSent && !res.destroyed) {

@@ -12,7 +12,7 @@ contas por e-mail usam Supabase Auth. O frontend estático fica na Vercel e enca
 `/api/*` à função, preservando uma única origem para o navegador.
 
 `shared/` contém o conteúdo e as regras de estudo. `backend/phraseService.js`,
-`speechService.js` e `siteConfig.js` são reutilizados pela Edge Function.
+`speechService.js` é reutilizado pela Edge Function.
 O conteúdo de `shared/` deve ser mantido igual ao do `maru-frontend/shared/`;
 `npm run check` compara as duas cópias quando os repositórios estão lado a lado.
 `backend/server.js`, SQLite e o Dockerfile permanecem somente como adaptador

@@ -1,7 +1,6 @@
 import { CONTENT } from "../../../backend/contentService.js";
 import { createSpeechService } from "../../../backend/speechService.js";
 import { checkPhrase } from "../../../backend/phraseService.js";
-import { publicConfig } from "../../../backend/siteConfig.js";
 import { createProgressRepository } from "./progress.js";
 import { createAuth } from "./auth.js";
 
@@ -36,7 +35,7 @@ async function readJson(request) {
   }
 }
 
-export function createMaruHandler({ repository, auth, speech, config = { support: [] } }) {
+export function createMaruHandler({ repository, auth, speech }) {
   return async function handle(request) {
     const url = new URL(request.url);
     const apiPosition = url.pathname.indexOf("/api/");
@@ -45,7 +44,6 @@ export function createMaruHandler({ repository, auth, speech, config = { support
     try {
       if (pathname === "/api/health" && request.method === "GET") return json(200, { ok: true, name: "maru", version: 2 });
       if (pathname === "/api/content" && request.method === "GET") return json(200, CONTENT);
-      if (pathname === "/api/config" && request.method === "GET") return json(200, config);
       if (pathname === "/api/auth/google" && request.method === "GET") {
         try {
           const login = await auth.begin();
@@ -145,9 +143,7 @@ function environment() {
     SUPABASE_SERVICE_ROLE_KEY: defaultKey(get("SUPABASE_SECRET_KEYS"), get("SUPABASE_SERVICE_ROLE_KEY")),
     MARU_PUBLIC_ORIGIN: get("MARU_PUBLIC_ORIGIN") || "https://maru-frontend.vercel.app",
     MARU_GOOGLE_ENABLED: get("MARU_GOOGLE_ENABLED"),
-    TTS_QUEST_API_KEY: get("TTS_QUEST_API_KEY"),
-    MARU_SUPPORT_BR_URL: get("MARU_SUPPORT_BR_URL"),
-    MARU_SUPPORT_GLOBAL_URL: get("MARU_SUPPORT_GLOBAL_URL")
+    TTS_QUEST_API_KEY: get("TTS_QUEST_API_KEY")
   };
 }
 
@@ -159,8 +155,7 @@ if (typeof Deno !== "undefined") {
       supabaseUrl: env.SUPABASE_URL, anonKey: env.SUPABASE_ANON_KEY,
       publicOrigin: env.MARU_PUBLIC_ORIGIN, googleEnabled: env.MARU_GOOGLE_ENABLED === "true"
     }),
-    speech: createSpeechService({ key: env.TTS_QUEST_API_KEY }),
-    config: publicConfig(env)
+    speech: createSpeechService({ key: env.TTS_QUEST_API_KEY })
   });
   Deno.serve(handler);
 }

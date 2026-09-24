@@ -44,7 +44,6 @@ Variáveis opcionais da função:
 | `MARU_PUBLIC_ORIGIN` | Origem HTTPS do site, sem caminho ou barra final. |
 | `MARU_GOOGLE_ENABLED` | `true` somente depois de configurar e testar Google no Supabase Auth. |
 | `TTS_QUEST_API_KEY` | Chave da API de pronúncia, se disponível. |
-| `MARU_SUPPORT_BR_URL` / `MARU_SUPPORT_GLOBAL_URL` | Links HTTPS reais de apoio. |
 
 `verify_jwt = false` é intencional: conteúdo e perfis de navegador são públicos.
 As contas são validadas com Supabase Auth dentro da função, e escritas verificam

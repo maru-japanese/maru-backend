@@ -4,7 +4,6 @@ import { mkdtemp, readFile, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createProgressStorage } from "../backend/storage.js";
-import { publicConfig } from "../backend/siteConfig.js";
 
 test("SQLite imports legacy JSON once, merges history and creates a restorable backup", async t => {
   const directory = await mkdtemp(path.join(tmpdir(), "maru-sqlite-"));
@@ -27,9 +26,4 @@ test("SQLite imports legacy JSON once, merges history and creates a restorable b
   assert.equal(copy.pragma("integrity_check", { simple: true }), "ok");
   assert.equal(JSON.parse(copy.prepare("SELECT snapshot FROM progress WHERE owner_id=?").get("browser-old").snapshot).xp.total, 90);
   copy.close();
-});
-
-test("public config exposes only safe support destinations and no credentials", () => {
-  assert.deepEqual(publicConfig({ GOOGLE_CLIENT_SECRET: "never-public", MARU_SUPPORT_BR_URL: "javascript:alert(1)", MARU_SUPPORT_GLOBAL_URL: "https://user:secret@example.org" }), { support: [] });
-  assert.deepEqual(publicConfig({ MARU_SUPPORT_BR_URL: "https://apoia.se/example", MARU_SUPPORT_GLOBAL_URL: "https://ko-fi.com/example" }).support.map(item => item.label), ["Apoiar no Brasil", "Apoiar de outro país"]);
 });
